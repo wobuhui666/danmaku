@@ -35,6 +35,7 @@ app.use("/assets", [
 
 // 加载路由
 app.use("/", danmakuRouter);
+app.use("/xml", express.static(path.join(__dirname, "public/xml")));
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
