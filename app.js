@@ -34,9 +34,17 @@ app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false, validate: { trustProxy: false } }));
 app.use(cookieParser());
+
 // 加载静态资源
 app.use(express.static(path.join(__dirname, "public"), {maxAge: 86400*1000 }));
-app.use(express.static(path.join(__dirname,"db")))
+app.use(express.static(path.join(__dirname,"db")));
+
+// ---- 新增 ----
+// 为缓存的弹幕XML文件提供静态服务
+// 当浏览器请求 /danmaku/some-file.xml 时，Express会去 public/danmaku 目录下查找文件
+app.use('/danmaku', express.static(path.join(__dirname, 'public', 'danmaku'), {maxAge: 86400*1000}));
+// ---- 新增结束 ----
+
 app.use("/assets", [
 	express.static(__dirname + "/node_modules/jquery/dist/",{maxAge: 86400*1000}),
 	express.static(__dirname + "/node_modules/bootstrap/dist/",{maxAge: 86400*1000}),
