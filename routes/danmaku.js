@@ -2,6 +2,10 @@ const express = require("express");
 const axios = require("axios");
 const router = express.Router();
 const URL = require("url");
+const fs = require("fs"); // 引入：文件系统模块
+const path = require("path"); // 引入：路径处理模块
+const crypto = require("crypto"); // 引入：加密模块，用于生成唯一文件名
+
 const {
 	bilibili,
 	mgtv,
@@ -13,6 +17,15 @@ const {
 const list = [bilibili, mgtv, tencentvideo, youku, iqiyi, gamer];
 const memory = require("../utils/memory");
 const db = require("../utils/db");
+
+// 定义服务器上存放XML缓存文件的物理目录路径
+const DANMAKU_CACHE_DIR = path.join(__dirname, '..', 'public', 'danmaku');
+
+// 程序启动时，检查并确保该缓存目录存在，如果不存在则自动创建
+if (!fs.existsSync(DANMAKU_CACHE_DIR)) {
+    console.log(`正在创建弹幕缓存目录: ${DANMAKU_CACHE_DIR}`);
+    fs.mkdirSync(DANMAKU_CACHE_DIR, { recursive: true });
+}
 
 // 返回对象{msg: "ok", title: "标题", content: []}
 async function build_response(url, req) {
@@ -67,17 +80,16 @@ async function build_response(url, req) {
     try {
         ret = await fc.work(url);
         
-        // 缓存结果
+        // 缓存结果 (内存缓存)
         if (ret.msg === "ok") {
             if (!global.danmakuCache) global.danmakuCache = {};
             global.danmakuCache[cacheKey] = ret;
             
-            // 设置缓存过期时间（24小时）
             setTimeout(() => {
                 if (global.danmakuCache && global.danmakuCache[cacheKey]) {
                     delete global.danmakuCache[cacheKey];
                 }
-            }, 24 * 60 * 60 * 1000);
+            }, 24 * 60 * 60 * 1000); // 24小时后过期
         }
     } catch (e) {
         console.log(e);
@@ -94,7 +106,6 @@ async function build_response(url, req) {
 
 async function resolve(req, res) {
 	const url = req.query.url;
-	const download = (req.query.download === "on");
 	const ret = await build_response(url, req);
 	memory(); //显示内存使用量
 	if (ret.msg !== "ok") {
@@ -102,29 +113,45 @@ async function resolve(req, res) {
 		return;
 	}
 	
-	// 记录视频信息
-	db.videoInfoInsert({url,title:ret.title})
+	db.videoInfoInsert({url, title: ret.title});
 	
-	//B站视频，直接重定向
+	// ---- 核心逻辑修改 ----
+
+	// 1. 【Bilibili 逻辑】检查解析器是否直接返回了URL (这是为B站保留的原始逻辑)
 	if (ret.url) {
-		res.redirect(ret.url);
+		console.log(`Bilibili: 直接重定向到 ${ret.url}`);
+		res.redirect(ret.url); // B站直接重定向
 	} else {
-		// 设置响应头为XML类型
-		res.type("application/xml");
-		res.set('Cache-Control', 'public, max-age=86400'); // 缓存一天
-		
-		// 始终设置为下载附件，提供直链
-		res.attachment(ret.title + ".xml");
-		
-		// 直接构建XML字符串而不是渲染模板
-		let xmlContent = '<?xml version="1.0" encoding="utf-8"?>\n<i>\n';
-		for (const content of ret.content) {
-			xmlContent += `    <d p="${content.timepoint},${content.ct},${content.size},${content.color},${content.unixtime},0,${content.uid},26732601000067074,1">${content.content}</d>\n`;
-		}
-		xmlContent += '</i>';
-		
-		// 发送XML内容
-		res.send(xmlContent);
+		// 2. 【其他网站逻辑】生成XML文件，缓存到本地，然后重定向
+		console.log(`其他网站: 为 "${ret.title}" 生成并缓存XML文件`);
+
+        // 使用视频原始URL的MD5哈希值作为文件名，确保唯一且安全
+        const hash = crypto.createHash('md5').update(url).digest('hex');
+        const fileName = `${hash}.xml`;
+        const filePath = path.join(DANMAKU_CACHE_DIR, fileName);
+
+        // 检查XML文件是否已存在于硬盘上
+        if (!fs.existsSync(filePath)) {
+            console.log(`本地缓存未命中，正在生成文件: ${fileName}`);
+            
+            // 构建XML内容
+            let xmlContent = '<?xml version="1.0" encoding="utf-8"?>\n<i>\n';
+            for (const content of ret.content) {
+                xmlContent += `    <d p="${content.timepoint},${content.ct},${content.size},${content.color},${content.unixtime},0,${content.uid},26732601000067074,1">${content.content}</d>\n`;
+            }
+            xmlContent += '</i>';
+
+            // 将XML内容同步写入文件
+            fs.writeFileSync(filePath, xmlContent);
+        } else {
+            console.log(`命中本地文件缓存: ${fileName}`);
+        }
+
+        // 构建可供外部浏览器访问的公开URL
+        const publicUrl = `${req.protocol}://${req.get('host')}/danmaku/${fileName}`;
+        
+        // 执行302重定向到该XML文件的直链
+        res.redirect(302, publicUrl);
 	}
 }
 
@@ -132,8 +159,8 @@ async function index(req, res) {
 	const urls = list.map(item => item.example_urls[0]);
 	const names = list.map(item => item.name);
 	const path = req.protocol + "://" + req.headers.host + req.originalUrl;
-	const resolve_info = await db.accessCountQuery()
-	const hotlist = await db.hotlistQuery()
+	const resolve_info = await db.accessCountQuery();
+	const hotlist = await db.hotlistQuery();
 	res.render("danmaku", {
 		path,
 		urls,
@@ -145,18 +172,21 @@ async function index(req, res) {
 
 /* GET home page. */
 router.get("/", async function (req, res) {
-    // 异步执行数据库插入，不阻塞响应
     db.accessInsert({
         ip: req.ip,
         url: req.query.url,
         UA: req.headers["user-agent"]
     }).catch(err => console.error("DB access insert error:", err));
     
-    //检查是否包含URL参数
-    if (!req.query.url) index(req, res); else resolve(req, res);
+    if (!req.query.url) {
+        index(req, res);
+    } else {
+        resolve(req, res);
+    }
 });
+
 router.get("/delete", async function (req, res) {
-	const rows = db.deleteAccess();
+	db.deleteAccess();
 	res.send(`成功请求删除三个月以前的记录，删除情况请查看日志`);
 });
 
