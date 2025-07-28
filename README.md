@@ -1,5 +1,6 @@
 # danmaku
 用于解析转换各大视频网站（芒果TV，腾讯视频，优酷视频，爱奇艺视频，哔哩哔哩）弹幕
+修改原项目使解析出的弹幕为.xml直链 同时优化性能（虽然不知道有没有效果
 
 # 依赖
 - chai: 断言库
@@ -13,7 +14,23 @@ npm install # 安装依赖
 npm run dev # 本地运行
 npm run test # 单元测试
 ```
+# Docker部署
 
+本项目的Docker镜像支持以下架构：
+- linux/amd64 (x86_64)
+- linux/arm64 (aarch64)
+
+可以使用以下命令拉取并运行Docker镜像：
+
+```bash
+# 拉取镜像
+docker pull ghcr.io/wobuhui666/danmaku:latest
+
+# 运行容器
+docker run -d -p 3000:3000 ghcr.io/wobuhui666/danmaku:latest
+```
+
+Docker将自动为您的系统架构选择正确的镜像版本。
 # 部署到fly.io
 ``` sh
 curl -L https://fly.io/install.sh | sh #linux
@@ -48,20 +65,4 @@ npm outdated
 npm update
 ```
 
-# Docker支持
 
-本项目的Docker镜像支持以下架构：
-- linux/amd64 (x86_64)
-- linux/arm64 (aarch64)
-
-可以使用以下命令拉取并运行Docker镜像：
-
-```bash
-# 拉取镜像
-docker pull ghcr.io/[用户名]/danmaku:latest
-
-# 运行容器
-docker run -d -p 3000:3000 ghcr.io/[用户名]/danmaku:latest
-```
-
-Docker将自动为您的系统架构选择正确的镜像版本。
