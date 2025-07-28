@@ -47,3 +47,21 @@ flyctl ssh sftp get /app/db/danmaku.db
 npm outdated
 npm update
 ```
+
+# Docker支持
+
+本项目的Docker镜像支持以下架构：
+- linux/amd64 (x86_64)
+- linux/arm64 (aarch64)
+
+可以使用以下命令拉取并运行Docker镜像：
+
+```bash
+# 拉取镜像
+docker pull ghcr.io/[用户名]/danmaku:latest
+
+# 运行容器
+docker run -d -p 3000:3000 ghcr.io/[用户名]/danmaku:latest
+```
+
+Docker将自动为您的系统架构选择正确的镜像版本。
