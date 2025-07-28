@@ -10,7 +10,18 @@ require("dotenv")
 
 // 引入一个个路由模块
 const danmakuRouter = require("./routes/danmaku");
+// 在现有代码之后添加
 const app = express();
+
+// 初始化全局缓存
+global.danmakuCache = {};
+
+// 定期清理缓存（每天）
+setInterval(() => {
+    console.log("Clearing danmaku cache...");
+    global.danmakuCache = {};
+}, 24 * 60 * 60 * 1000);
+
 // 启用gzip压缩
 app.use(compression());
 

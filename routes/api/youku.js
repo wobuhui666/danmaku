@@ -76,56 +76,72 @@ function Youku() {
     const cna = await this.get_cna();
     const tk_enc = await this.get_tk_enc();
     const headers = {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Cookie': '_m_h5_tk=' + tk_enc['_m_h5_tk'] + ';_m_h5_tk_enc=' + tk_enc['_m_h5_tk_enc'] + ';',
-      'Referer': 'https://v.youku.com',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Cookie': '_m_h5_tk=' + tk_enc['_m_h5_tk'] + ';_m_h5_tk_enc=' + tk_enc['_m_h5_tk_enc'] + ';',
+        'Referer': 'https://v.youku.com',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36',
     };
     const [vid, duration] = await get_vinfos_by_video_id(url);
 
     const max_mat = Math.floor(duration / 60) + 1;
     let promises = [];
-    for (let mat = 0; mat < max_mat; mat++) {
-      const api_url = 'https://acs.youku.com/h5/mopen.youku.danmu.list/1.0/';
-      const msg = {
-        'ctime': Date.now(),
-        'ctype': 10004,
-        'cver': 'v1.0',
-        'guid': cna,
-        'mat': mat,
-        'mcount': 1,
-        'pid': 0,
-        'sver': '3.1.0',
-        'type': 1,
-        'vid': vid
-      };
-      // plain-text string
-      const str = JSON.stringify(msg);
-      const buff = Buffer.from(str, 'utf-8');
-      const msg_b64encode = buff.toString('base64');
-      msg['msg'] = msg_b64encode;
-      msg['sign'] = yk_msg_sign(msg_b64encode);
-      const data = JSON.stringify(msg);
-      const t = Date.now();
-      const params = {
-        'jsv': '2.5.6',
-        'appKey': '24679788',
-        't': t,
-        'sign': yk_t_sign(tk_enc['_m_h5_tk'].slice(0, 32), t, '24679788', data),
-        'api': 'mopen.youku.danmu.list',
-        'v': '1.0',
-        'type': 'originaljson',
-        'dataType': 'jsonp',
-        'timeout': '20000',
-        'jsonpIncPrefix': 'utility'
-      };
-      promises.push(axios.post(api_url, { data }, {
-        headers: headers,
-        params: params
-      }));
+    
+    // 批量处理，每次最多处理5个请求
+    const batchSize = 5;
+    for (let i = 0; i < max_mat; i += batchSize) {
+        const batchPromises = [];
+        const end = Math.min(i + batchSize, max_mat);
+        
+        for (let mat = i; mat < end; mat++) {
+            // 原有的API请求代码
+            const api_url = 'https://acs.youku.com/h5/mopen.youku.danmu.list/1.0/';
+            const msg = {
+                'ctime': Date.now(),
+                'ctype': 10004,
+                'cver': 'v1.0',
+                'guid': cna,
+                'mat': mat,
+                'mcount': 1,
+                'pid': 0,
+                'sver': '3.1.0',
+                'type': 1,
+                'vid': vid
+            };
+            // plain-text string
+            const str = JSON.stringify(msg);
+            const buff = Buffer.from(str, 'utf-8');
+            const msg_b64encode = buff.toString('base64');
+            msg['msg'] = msg_b64encode;
+            msg['sign'] = yk_msg_sign(msg_b64encode);
+            const data = JSON.stringify(msg);
+            const t = Date.now();
+            const params = {
+                'jsv': '2.5.6',
+                'appKey': '24679788',
+                't': t,
+                'sign': yk_t_sign(tk_enc['_m_h5_tk'].slice(0, 32), t, '24679788', data),
+                'api': 'mopen.youku.danmu.list',
+                'v': '1.0',
+                'type': 'originaljson',
+                'dataType': 'jsonp',
+                'timeout': '20000',
+                'jsonpIncPrefix': 'utility'
+            };
+            batchPromises.push(axios.post(api_url, { data }, {
+                headers: headers,
+                params: params,
+                timeout: 5000 // 添加超时设置
+            }));
+        }
+        
+        // 等待当前批次完成
+        const results = await Promise.allSettled(batchPromises);
+        promises = promises.concat(results.filter(result => result.status === 'fulfilled')
+            .map(result => result.value));
     }
+    
     return promises;
-  };
+};
 
   this.parse = async (promises) => {
     let contents = [];
