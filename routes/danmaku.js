@@ -5,6 +5,7 @@ const URL = require("url");
 const fs = require("fs"); // 引入：文件系统模块
 const path = require("path"); // 引入：路径处理模块
 const crypto = require("crypto"); // 引入：加密模块，用于生成唯一文件名
+const { buildPublicUrl } = require("../utils/domain"); // 引入：域名配置工具
 
 const {
 	bilibili,

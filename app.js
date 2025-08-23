@@ -13,6 +13,15 @@ const danmakuRouter = require("./routes/danmaku");
 // 在现有代码之后添加
 const app = express();
 
+// 验证域名配置
+const domainValidation = validateDomainConfig();
+if (!domainValidation.isValid) {
+	console.warn('Domain configuration warnings:', domainValidation.errors);
+	console.warn('Using default domain detection behavior.');
+} else {
+	console.log('Domain configuration is valid.');
+}
+
 // 初始化全局缓存
 global.danmakuCache = {};
 

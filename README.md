@@ -15,6 +15,49 @@ npm install # 安装依赖
 npm run dev # 本地运行
 npm run test # 单元测试
 ```
+
+# 环境变量配置
+
+## 自定义域名配置
+
+本项目支持通过环境变量自定义域名，特别适用于反向代理和容器化部署场景。
+
+### 配置选项
+
+1. **完整域名配置（推荐）**
+   ```bash
+   CUSTOM_DOMAIN=https://api.example.com
+   ```
+
+2. **分别配置协议和主机**
+   ```bash
+   CUSTOM_PROTOCOL=https
+   CUSTOM_HOST=myapp.example.com
+   ```
+
+3. **强制HTTPS（反向代理场景）**
+   ```bash
+   FORCE_HTTPS=true
+   ```
+
+### 部署场景示例
+
+**Docker + Nginx反向代理**
+```bash
+CUSTOM_DOMAIN=https://api.example.com
+```
+
+**云平台部署（如Heroku）**
+```bash
+CUSTOM_PROTOCOL=https
+CUSTOM_HOST=myapp.herokuapp.com
+```
+
+**本地开发**
+无需配置，保持默认行为。
+
+详细配置请参考 `.env.example` 文件。
+
 # Docker部署
 
 本项目的Docker镜像支持以下架构：
