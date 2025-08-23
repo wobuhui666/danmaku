@@ -135,6 +135,7 @@ flyctl deploy
 ``` dockerfile
 FROM ghcr.io/wobuhui666/danmaku:latest
 ENV PORT 7860
+ENV CUSTOM_DOMAIN https://yourdomain
 EXPOSE 7860
 USER root
 RUN mkdir -p /app/public/danmaku && chown -R node:node /app/public/danmaku
