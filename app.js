@@ -8,6 +8,9 @@ const compression = require('compression');
 require("dotenv")
 	.config();
 
+// 引入域名配置工具
+const { validateDomainConfig } = require("./utils/domain");
+
 // 引入一个个路由模块
 const danmakuRouter = require("./routes/danmaku");
 // 在现有代码之后添加
