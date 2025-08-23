@@ -1,4 +1,4 @@
-const URL = require('url');
+const { URL } = require('url');
 
 /**
  * 环境变量自定义域名配置工具
@@ -50,7 +50,15 @@ function validateConfig(config) {
     // 验证 CUSTOM_DOMAIN
     if (config.customDomain) {
         try {
-            const parsedUrl = new URL(config.customDomain);
+            // 兼容性解决方案：使用url.parse作为备选
+            let parsedUrl;
+            try {
+                parsedUrl = new URL(config.customDomain);
+            } catch (urlError) {
+                // 如果URL构造函数不可用，使用url.parse
+                const urlParse = require('url').parse;
+                parsedUrl = urlParse(config.customDomain);
+            }
             
             // 只允许 http/https 协议
             if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
@@ -58,12 +66,12 @@ function validateConfig(config) {
             }
             
             // 不允许包含路径
-            if (parsedUrl.pathname !== '/') {
+            if (parsedUrl.pathname && parsedUrl.pathname !== '/') {
                 errors.push('CUSTOM_DOMAIN should not contain path');
             }
             
             // 不允许包含查询参数
-            if (parsedUrl.search) {
+            if (parsedUrl.search || parsedUrl.query) {
                 errors.push('CUSTOM_DOMAIN should not contain query parameters');
             }
         } catch (e) {
@@ -107,7 +115,16 @@ function getDomainConfig(req) {
     // 优先级1: CUSTOM_DOMAIN（完整域名）
     if (config.customDomain) {
         try {
-            const parsedUrl = new URL(config.customDomain);
+            // 兼容性解决方案：使用url.parse作为备选
+            let parsedUrl;
+            try {
+                parsedUrl = new URL(config.customDomain);
+            } catch (urlError) {
+                // 如果URL构造函数不可用，使用url.parse
+                const urlParse = require('url').parse;
+                parsedUrl = urlParse(config.customDomain);
+            }
+            
             return {
                 protocol: parsedUrl.protocol.slice(0, -1), // 移除末尾的冒号
                 host: parsedUrl.host

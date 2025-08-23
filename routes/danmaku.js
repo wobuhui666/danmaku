@@ -149,7 +149,7 @@ async function resolve(req, res) {
         }
 
         // 构建可供外部浏览器访问的公开URL
-        const publicUrl = `${req.protocol}://${req.get('host')}/danmaku/${fileName}`;
+        const publicUrl = buildPublicUrl(req, `/danmaku/${fileName}`);
         
         // 执行302重定向到该XML文件的直链
         res.redirect(302, publicUrl);
@@ -159,7 +159,7 @@ async function resolve(req, res) {
 async function index(req, res) {
 	const urls = list.map(item => item.example_urls[0]);
 	const names = list.map(item => item.name);
-	const path = req.protocol + "://" + req.headers.host + req.originalUrl;
+	const path = buildPublicUrl(req, req.originalUrl);
 	const resolve_info = await db.accessCountQuery();
 	const hotlist = await db.hotlistQuery();
 	res.render("danmaku", {
